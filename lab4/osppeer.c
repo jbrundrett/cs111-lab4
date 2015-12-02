@@ -23,7 +23,10 @@
 #include "md5.h"
 #include "osp2p.h"
 
+#include <time.h>
+
 #define DEBUG_ACCESSCONTROL 0
+#define DEBUG_DOWNLOAD 0
 #define PRINTOUT_ACCESSCONTROL 1
 
 
@@ -40,9 +43,13 @@ static int listen_port;
 
 #define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
+
 #define MAXIPLEN 64 // Enough characters to store an IP address
 #define DESIGN_ACTL ".access"
 #define DESIGN_ENDMARK "ENDFILE"
+
+#define DOWNLOAD_MINTIME 1
+#define DOWNLOAD_MINTIME_THRESHOLD 10
 
 
 typedef struct peer_node {
@@ -757,6 +764,10 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 //	until a download is successful.
 static void task_download(task_t *t, task_t *tracker_task)
 {
+  int counter_lowspeed = 0;
+  time_t time_start;
+  time_t time_end;
+
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
 	       && tracker_task->type == TASK_TRACKER);
@@ -811,6 +822,9 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
+    
+  
+    time_start = time(0);
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
@@ -824,6 +838,22 @@ static void task_download(task_t *t, task_t *tracker_task)
 			error("* Disk write error");
 			goto try_again;
 		}
+
+    
+    time_end = time(0); 
+    if (DEBUG_DOWNLOAD)
+    {
+      message("time elapsed: %d\n", time_end - time_start);
+      message("cur counter_lowspeed: %d\n", counter_lowspeed);
+    }
+    if (time_end - time_start >= DOWNLOAD_MINTIME)
+      counter_lowspeed++;
+    else
+      counter_lowspeed = counter_lowspeed == 0 ? 0 : counter_lowspeed - 1;
+
+    if (counter_lowspeed > DOWNLOAD_MINTIME_THRESHOLD)
+      goto try_again;
+
 	}
 
 	// Empty files are usually a symptom of some error.
