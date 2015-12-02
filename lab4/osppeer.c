@@ -108,9 +108,8 @@ void init_access_control()
 {
   FILE *fp;
   fp = fopen(ACCESSCONTROL, "r");
-  //THROW AN ERROR IF DOES NOT EXIST OR SOMETHING
-
-
+  if (fp == NULL)
+    return;
 
 
   file_options_t *controller = NULL;
@@ -123,16 +122,14 @@ void init_access_control()
   int idx;
   
 
-
   while(1)
   {
     controller = init_file_options_t();
     buf = mygetline(fp);
     len = mystrlen(buf);
-    /*
     if (len > FILENAMESIZ)
 			die("ACCESSCONTROL file has incorrect formatting: line is too long");
-      */
+
     if (len == 0)
       break;
       
