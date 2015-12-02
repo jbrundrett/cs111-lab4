@@ -23,6 +23,8 @@
 #include "md5.h"
 #include "osp2p.h"
 
+#define DEBUG 1
+
 
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
@@ -75,8 +77,9 @@ file_options_t *init_file_options_t(void) {
 
 char * mygetline(FILE* fp)
 {
-  char c = fgetc(fp);
-  char *s = malloc(sizeof(char) * 1);
+
+  char c;
+  char *s = malloc(sizeof(char) * 2);
   char *old;
   s[0] = '\0';
   int idx = 0;
@@ -105,6 +108,9 @@ void init_access_control()
 {
   FILE *fp;
   fp = fopen(ACCESSCONTROL, "r");
+  //THROW AN ERROR IF DOES NOT EXIST OR SOMETHING
+
+
 
 
   file_options_t *controller = NULL;
@@ -126,19 +132,25 @@ void init_access_control()
     /*
     if (len > FILENAMESIZ)
 			die("ACCESSCONTROL file has incorrect formatting: line is too long");
+      */
     if (len == 0)
       break;
-      */
+      
+      
     strncpy(controller->file_name, buf, len );
+    if (DEBUG)
+      message("filename: %s\n", buf);
 
 
     buf = mygetline(fp);
     len = mystrlen(buf);
+    if (DEBUG)
+      message("Accesscontrol: %s\n", buf);
     switch(buf[0]) {
-      case(1): 
+      case('1'): 
         controller->file_access = ACCEPT_ALL;
         break;
-      case(0):
+      case('0'):
         controller->file_access = DENY_ALL;
         break;
       default:
@@ -150,10 +162,16 @@ void init_access_control()
         die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
      */
 
+
     while(1)
     {
       buf = mygetline(fp);
       len = mystrlen(buf);
+
+      if (strcmp(buf, ENDFILE) == 0)
+        break;
+      if (len == 0)
+        break;
       /*
       if (len > MAXIPLEN)
         die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
@@ -163,9 +181,16 @@ void init_access_control()
       {
         if (buf[idx] == ':')
           break;
-        if (buf[idx] != '\0')
+        if (buf[idx] == '\0')
           die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
       }
+
+      buf[idx] = '\0';
+      
+      if (DEBUG)
+        message("ip: %s\n", buf);
+      if (DEBUG)
+        message("port: %s\n", buf + idx + 1);
 
       cur_peer = malloc(sizeof(peer_node_t));
       strncpy(cur_peer->node_ip, buf, idx);
@@ -183,10 +208,6 @@ void init_access_control()
       }
 
 
-      if (len == 0)
-        break;
-      if (strcmp(buf, ENDFILE))
-        break;
     }
 
     if (access_control == NULL)
@@ -966,6 +987,7 @@ static void task_upload(task_t *t)
 //	The main loop!
 int main(int argc, char *argv[])
 {
+  init_access_control();
 	task_t *tracker_task, *listen_task, *t;
 	struct in_addr tracker_addr;
 	int tracker_port;
