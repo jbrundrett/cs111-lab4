@@ -18,9 +18,9 @@ Student ID: 604345463
 Email: julien.brundret@gmail.com
 
 # Partner 2 (if you're working in a team)
-Name: Vince Siu
-Student ID: 
-Email: 
+Name: Vincent Siu
+Student ID: 904280752
+Email: vince.siu4@gmail.com 
 
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
