@@ -360,8 +360,8 @@ taskbufresult_t read_to_taskbuf(int fd, task_t *t)
 		amt = read(fd, &t->buf[tailpos], TASKBUFSIZ - tailpos);
 	else
 		amt = read(fd, &t->buf[tailpos], headpos - tailpos);
-
-	if (amt == -1 && (errno == EINTR || errno == EAGAIN
+  
+  if (amt == -1 && (errno == EINTR || errno == EAGAIN
 			  || errno == EWOULDBLOCK))
 		return TBUF_AGAIN;
 	else if (amt == -1)
@@ -781,7 +781,9 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
-		int ret = read_to_taskbuf(t->peer_fd, t);
+		
+    int ret = read_to_taskbuf(t->peer_fd, t);
+    
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
 			goto try_again;
@@ -795,7 +797,8 @@ static void task_download(task_t *t, task_t *tracker_task)
 			goto try_again;
 		}
 	}
-
+  
+  message("wrote %d\n", t->total_written);
 	// Empty files are usually a symptom of some error.
 	if (t->total_written > 0) {
 		message("* Downloaded '%s' was %lu bytes long\n",
@@ -1061,7 +1064,6 @@ int main(int argc, char *argv[])
       // Child process code
       else if (pid == 0) 
       {
-        printf("Child downloading\n");
         task_download(t, tracker_task);
         _exit(0); // _exit should be used for exiting child processes
       }
@@ -1072,7 +1074,7 @@ int main(int argc, char *argv[])
 
 	// Then accept connections from other peers and upload files to them!
   // Exercise 1: Implement parallel file uploading -- accomplished by forking for each upload.
-	printf("Seeding has started\n");
+	
   while ((t = task_listen(listen_task)))
 	{	
     pid = fork();
@@ -1082,7 +1084,6 @@ int main(int argc, char *argv[])
     // Child process code -- handle uploads
     else if (pid == 0)
     {
-      printf("Child uploading\n");
       task_upload(t);
       _exit(0);
     }
