@@ -1,4 +1,4 @@
-# Fill in your name, student ID, and email address in this file.
+ # Fill in your name, student ID, and email address in this file.
 # If you are working in a team, fill out the information for both team 
 # members.
 
@@ -35,12 +35,25 @@ request is completed, the child process will exit.
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
 
+A buffer overrun bug can be caused in the filename buffer. strcpy is not safe,
+so if a filename longer than the filename buffer is copied, it will trigger
+buffer overflow. The start_download function was modified to ensure that no
+filenames passed as initial arguments are larger than the filename buffer.
 
+The task_upload function was also modified to ensure that the filename passed
+in a GET request from a peer is within buffer limits. Strcpy was used originally
+in this function, so buffer overflow was possible. Checks were added to ensure
+the filename passed in the GET request is within character limits prior to being
+copied to the buffer.
 
 # EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
 #    each)
 
-check for current dir in upload filename
-
+There were no checks in place to ensure that GET requests will fail for
+files outside of the working directory. The task_download function was modified
+to parse through the filename and ensure no '/' characters are present, with the
+exception of './' occuring as the first two characters of the filename. If any
+'/' characters are present, then the peer is attempting to access a subdirectory,
+which is not allowed.
 
 # Add any other information you'd like us to know below this line.
