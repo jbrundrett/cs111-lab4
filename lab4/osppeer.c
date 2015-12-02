@@ -40,6 +40,8 @@ static int listen_port;
 #define FILENAMESIZ	256	// Size of task_t::filename
 #define MAXIPLEN 64 // Enough characters to store an IP address
 
+
+
 typedef struct peer_node {
 	char node_ip[MAXIPLEN];	// => Peer's IP address
 	int node_port;		// => Peer's port number
@@ -53,6 +55,12 @@ typedef struct file_options {
   enum {ACCEPT_ALL, DENY_ALL } file_access;
 } file_options_t;
 
+file_options_t* init_access_control()
+{
+ FILE *fp;
+ fp = fopen(".access", "r");
+ return NULL;
+}
 
 typedef enum tasktype {		// Which type of connection is this?
 	TASK_TRACKER,		// => Tracker connection
