@@ -23,7 +23,8 @@
 #include "md5.h"
 #include "osp2p.h"
 
-#define DEBUG 1
+#define DEBUG_ACCESSCONTROL 0
+#define PRINTOUT_ACCESSCONTROL 1
 
 
 static struct in_addr listen_addr;	// Define listening endpoint
@@ -40,8 +41,8 @@ static int listen_port;
 #define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
 #define MAXIPLEN 64 // Enough characters to store an IP address
-#define ACCESSCONTROL ".access"
-#define ENDFILE "ENDFILE"
+#define DESIGN_ACTL ".access"
+#define DESIGN_ENDMARK "ENDFILE"
 
 
 typedef struct peer_node {
@@ -54,7 +55,7 @@ typedef struct file_options {
   char file_name[FILENAMESIZ];  
   peer_node_t *file_peers;
   struct file_options* file_next;
-  enum {ACCEPT_ALL, DENY_ALL } file_access;
+  enum {DENY_ALL, ACCEPT_ALL} file_access;
 } file_options_t;
 
 
@@ -107,7 +108,7 @@ int mystrlen(char *c)
 void init_access_control()
 {
   FILE *fp;
-  fp = fopen(ACCESSCONTROL, "r");
+  fp = fopen(DESIGN_ACTL, "r");
   if (fp == NULL)
     return;
 
@@ -135,14 +136,17 @@ void init_access_control()
       
       
     strncpy(controller->file_name, buf, len );
-    if (DEBUG)
+
+    if (DEBUG_ACCESSCONTROL)
       message("filename: %s\n", buf);
 
 
     buf = mygetline(fp);
     len = mystrlen(buf);
-    if (DEBUG)
+
+    if (DEBUG_ACCESSCONTROL)
       message("Accesscontrol: %s\n", buf);
+
     switch(buf[0]) {
       case('1'): 
         controller->file_access = ACCEPT_ALL;
@@ -154,10 +158,10 @@ void init_access_control()
         die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
     }
 
-    /*
+    
     if (len != 1)
         die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
-     */
+   
 
 
     while(1)
@@ -165,14 +169,12 @@ void init_access_control()
       buf = mygetline(fp);
       len = mystrlen(buf);
 
-      if (strcmp(buf, ENDFILE) == 0)
+      if (strcmp(buf, DESIGN_ENDMARK) == 0)
         break;
       if (len == 0)
         break;
-      /*
       if (len > MAXIPLEN)
         die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
-        */
 
       for (idx = 0; ; idx++)
       {
@@ -184,10 +186,11 @@ void init_access_control()
 
       buf[idx] = '\0';
       
-      if (DEBUG)
-        message("ip: %s\n", buf);
-      if (DEBUG)
-        message("port: %s\n", buf + idx + 1);
+      if (DEBUG_ACCESSCONTROL)
+        message("\tip: %s\n", buf);
+
+      if (DEBUG_ACCESSCONTROL)
+        message("\tport: %s\n", buf + idx + 1);
 
       cur_peer = malloc(sizeof(peer_node_t));
       strncpy(cur_peer->node_ip, buf, idx);
@@ -207,6 +210,7 @@ void init_access_control()
 
     }
 
+    tail_peer = NULL;
     if (access_control == NULL)
     {
       access_control = controller;
@@ -221,6 +225,32 @@ void init_access_control()
 
     if (len == 0)
       break;
+  }
+
+
+  if (PRINTOUT_ACCESSCONTROL)
+  {
+    tail_controller = access_control;
+    message("Printout access control structs:\n");
+    while (tail_controller != NULL)
+    {
+      message("filename: %s\n", tail_controller->file_name);
+      if (tail_controller->file_access == ACCEPT_ALL)
+        message("Access control: Accept all\n");
+      else if (tail_controller->file_access == DENY_ALL)
+        message("Access control: Deny all\n");
+      else
+        message("Unknown access control, bug\n");
+      tail_peer = tail_controller->file_peers;
+      message("Exceptions:\n");
+      while(tail_peer != NULL)
+      {
+        message("\tip: %s\n", tail_peer->node_ip);
+        message("\tport: %d\n", tail_peer->node_port);
+        tail_peer = tail_peer->node_next;
+      }
+      tail_controller = tail_controller->file_next;
+    }
   }
 
   return;
