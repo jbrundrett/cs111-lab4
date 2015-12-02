@@ -13,17 +13,24 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Julien Brundrett
+Student ID: 604345463
+Email: julien.brundret@gmail.com
 
 # Partner 2 (if you're working in a team)
-Name: 
+Name: Vince Siu
 Student ID: 
 Email: 
 
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
+
+A simple process forking method was used to implement parallel downloading
+and uploading. The main routine forks one child process per staged download,
+such that all initial downloads proceed in parallel. Next, the main routine
+listens for upload requests, then forks for each upload request. Multiple
+upload requests will proceed in parallel. Once a single upload or download
+request is completed, the child process will exit.
 
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
