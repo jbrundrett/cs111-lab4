@@ -55,11 +55,120 @@ typedef struct file_options {
   enum {ACCEPT_ALL, DENY_ALL } file_access;
 } file_options_t;
 
-file_options_t* init_access_control()
+file_options_t *init_file_options_t(void) {
+  file_options_t *foo = malloc(sizeof(file_options_t));
+  if (foo == NULL)
+    die("Memory allocation error");
+  foo->file_name[0] = '\0';
+  foo->file_peers = NULL;
+  foo->file_next = NULL;
+  foo->file_access = ACCEPT_ALL;
+
+  return foo;
+}
+
+char * mygetline(FILE* fp)
 {
- FILE *fp;
- fp = fopen(".access", "r");
- return NULL;
+  char c = fgetc(fp);
+  char *s = malloc(sizeof(char) * 1);
+  char *old;
+  s[0] = '\0';
+  int idx = 0;
+  while((c = fgetc(fp)) != '\n' && (c != EOF))
+  {
+    idx++;
+    old = s;
+    s = realloc(old, idx + 1);
+    s[idx - 1] = c;
+  }
+  s[idx] = '\0';
+
+  return s;
+}
+
+int mystrlen(char *c)
+{
+  int idx = 0;
+  while (c[idx] != '\0')
+    idx++;
+  return idx;
+}
+
+#define ACCESSCONTROL ".access"
+#define ENDFILE "ENDFILE"
+
+void init_access_control()
+{
+  FILE *fp;
+  fp = fopen(ACCESSCONTROL, "r");
+
+  file_options_t *controller;
+  controller = init_file_options_t();
+  char *buf;
+  peer_node_t *cur_peer;
+  peer_node_t *tail;
+
+
+  while(1)
+  {
+    buf = mygetline(fp);
+    len = mystrlen(buf);
+    if (len > FILENAMESIZ)
+			die("ACCESSCONTROL file has incorrect formatting: line is too long");
+    if (len == 0)
+      break;
+
+    strncpy(controller->file_name, buf, len );
+
+    buf = mygetline(fp);
+    len = mystrlen(buf);
+    switch(buf[0]) {
+      case(1): 
+        controller->file_access = ACCEPT_ALL;
+        break;
+      case(0):
+        controller->file_access = DENY_ALL;
+        break;
+      default:
+        die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
+    }
+
+    if (len != 1)
+        die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
+
+    while(1)
+    {
+      buf = mygetline(fp);
+      len = mystrlen(buf);
+      if (len > MAXIPLEN)
+        die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
+
+      for (idx = 0; ; idx++)
+      {
+        if (buf[idx] == ':')
+          break;
+        if (buf[idx] != '\0')
+          die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
+      }
+
+      cur_peer = malloc(sizeof(peer_node_t));
+      strncpy(cur_peer->node_ip, buf, idx);
+      cur_peer->node_port = atoi(buf + idx + 1);
+
+      if ( 
+
+      if (len == 0)
+        break;
+      if (strcmp(buf, ENDFILE))
+        break;
+    }
+
+    if (len == 0)
+      break;
+
+  }
+
+  return NULL;
 }
 
 typedef enum tasktype {		// Which type of connection is this?
