@@ -51,7 +51,6 @@ typedef struct file_options {
   peer_node_t *file_peers;
   struct file_options* file_next;
   enum {ACCEPT_ALL, DENY_ALL } file_access;
-
 } file_options_t;
 
 
