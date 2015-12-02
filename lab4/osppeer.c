@@ -35,6 +35,7 @@ static int listen_port;
 
 #define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
+#define MAXIPLEN 64 // Enough characters to store an IP address
 
 typedef enum tasktype {		// Which type of connection is this?
 	TASK_TRACKER,		// => Tracker connection
@@ -70,6 +71,9 @@ typedef struct task {
 				// function initializes this list;
 				// task_pop_peer() removes peers from it, one
 				// at a time, if a peer misbehaves.
+        
+  char ip_address[MAXIPLEN];
+  int portno;
 } task_t;
 
 
@@ -89,9 +93,11 @@ static task_t *task_new(tasktype_t type)
 	t->head = t->tail = 0;
 	t->total_written = 0;
 	t->peer_list = NULL;
-
+  t->portno = -1;
+  
 	strcpy(t->filename, "");
 	strcpy(t->disk_filename, "");
+  strcpy(t->ip_address, "");
 
 	return t;
 }
