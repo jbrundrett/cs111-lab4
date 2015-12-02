@@ -41,15 +41,15 @@ static int listen_port;
 #define MAXIPLEN 64 // Enough characters to store an IP address
 
 typedef struct peer_node {
-	struct in_addr addr;	// => Peer's IP address
-	int port;		// => Peer's port number
-  struct peer_node *next; //Pointer to next file_node
+	char node_ip[MAXIPLEN];	// => Peer's IP address
+	int node_port;		// => Peer's port number
+  struct peer_node *node_next; //Pointer to next file_node
 } peer_node_t;
 
 typedef struct file_options {
   char file_name[FILENAMESIZ];  
-  peer_node peer_head;
-  struct file_options* next;
+  peer_node_t *file_peers;
+  struct file_options* file_next;
   enum {ACCEPT_ALL, DENY_ALL } file_access;
 
 } file_options_t;
