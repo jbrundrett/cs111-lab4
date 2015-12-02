@@ -458,7 +458,34 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 	task_t *t = NULL;
 	peer_t *p;
 	size_t messagepos;
+  int len;
 	assert(tracker_task->type == TASK_TRACKER);
+
+  //EXERCISE 2:
+  //Making sure that the given download filenames (not the ones from the peers)
+  //are invalid. We check if the filename length is less than FILENAMESIZ, and
+  //signal an error and skip it if it is. A possible vulnerability still arises
+  //if the pointer data is manipulated after this check. We also used strncpy
+  //instead of strcpy for the functions inside start_download
+  for (len = 0; len < FILENAMESIZ; len++)
+  {
+    if (filename[len] == '\0')
+      break;
+  }
+
+  if (len == FILENAMESIZ)
+  {
+    message("Error: provided filename '%c%c%c%c%c...' is invalid, length too long",
+        filename[0],
+        filename[1],
+        filename[2],
+        filename[3],
+        filename[4]);
+    t = NULL;
+    goto exit;
+  }
+  ////////////////////////////////
+  ////////////////////////////////
 
 	message("* Finding peers for '%s'\n", filename);
 
@@ -474,7 +501,12 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
-	strcpy(t->filename, filename);
+
+
+  //Editted to strncpy
+	strncpy(t->filename, filename, len);
+  ///////////////////////////////////
+  ///////////////////////////////////
 
 	// add peers
 	s1 = tracker_task->buf;
