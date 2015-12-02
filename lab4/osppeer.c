@@ -850,9 +850,9 @@ static task_t *task_listen(task_t *listen_task)
 	return t;
 }
 
-// check_access(filename, ip, port)
-// Helper function for access control -- returns
-
+// check_access(t)
+// Given an upload task t, check if the peer is denied access to the filename
+// Returns 1 if access is permitted, 0 if access is denied
 static int check_access(task_t *t)
 {
   file_options_t* it = access_control;
@@ -943,6 +943,7 @@ static void task_upload(task_t *t)
   }
   
   // Design Project: Check if file access is allowed for this function
+  //
   if (!check_access(t))
   {
     error("Access Denied: Peer %s:%d attempted to GET %s\n", t->ip_address, t->portno, t->filename);
