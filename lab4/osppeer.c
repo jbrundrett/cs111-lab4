@@ -29,7 +29,6 @@ static int listen_port;
 
 
 
-
 /*****************************************************************************
  * TASK STRUCTURE
  * Holds all information relevant for a peer or tracker connection, including
@@ -55,6 +54,11 @@ typedef struct file_options {
   enum {ACCEPT_ALL, DENY_ALL } file_access;
 } file_options_t;
 
+
+// Global access control static pointer
+static file_options_t* access_control;
+
+
 file_options_t *init_file_options_t(void) {
   file_options_t *foo = malloc(sizeof(file_options_t));
   if (foo == NULL)
@@ -66,6 +70,7 @@ file_options_t *init_file_options_t(void) {
 
   return foo;
 }
+
 
 char * mygetline(FILE* fp)
 {
@@ -795,6 +800,50 @@ static task_t *task_listen(task_t *listen_task)
 	return t;
 }
 
+// check_access(filename, ip, port)
+// Helper function for access control -- returns
+
+static int check_access(task_t *t)
+{
+  file_options_t* it = access_control;
+  peer_node_t* peer_it;
+  int exception_found = 0;
+  
+  // Iterate through access control list, attempting to find a match for t->filename
+  while (it != NULL)
+  {
+    if (strcmp(it->file_name, t->filename))
+      break;
+    it = it->file_next;
+  }
+  // If no match found for t->filename, access is granted by default
+  if (it == NULL)
+    return 1;
+  
+  // Iterate through peer list and find if there is a matching peer
+  peer_it = it->file_peers;
+  while (peer_it != NULL)
+  {
+    // If a matching peer is found, then an access exception has been found -- flag and exit loop
+    if (strcmp(peer_it->node_ip, t->ip_address) 
+        && peer_it->node_port == t->portno)
+    {
+      exception_found = 1;
+      break;
+    }
+    peer_it = peer_it->node_next;
+  }
+  
+  // Based on default access and if an exception was found, either allow or deny access.
+  if (it->file_access == ACCEPT_ALL && exception_found)
+    return 0;
+  else if (it->file_access == DENY_ALL && exception_found)
+    return 1;
+  else if (it->file_access == DENY_ALL)
+    return 0;
+  else
+    return 1;
+}
 
 // task_upload(t)
 //	Handles an upload request from another peer.
@@ -841,6 +890,13 @@ static void task_upload(task_t *t)
         goto exit;
       }
     }
+  }
+  
+  // Design Project: Check if file access is allowed for this function
+  if (!check_access(t))
+  {
+    error("Access Denied: Peer %s:%d attempted to GET %s\n", t->ip_address, t->portno, t->filename);
+    goto exit;
   }
   
 	t->disk_fd = open(t->filename, O_RDONLY);
