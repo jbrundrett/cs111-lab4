@@ -38,7 +38,8 @@ static int listen_port;
 #define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
 #define MAXIPLEN 64 // Enough characters to store an IP address
-
+#define ACCESSCONTROL ".access"
+#define ENDFILE "ENDFILE"
 
 
 typedef struct peer_node {
@@ -99,31 +100,37 @@ int mystrlen(char *c)
   return idx;
 }
 
-#define ACCESSCONTROL ".access"
-#define ENDFILE "ENDFILE"
 
 void init_access_control()
 {
   FILE *fp;
   fp = fopen(ACCESSCONTROL, "r");
 
-  file_options_t *controller;
-  controller = init_file_options_t();
-  char *buf;
-  peer_node_t *cur_peer;
-  peer_node_t *tail;
+
+  file_options_t *controller = NULL;
+  file_options_t *tail_controller = NULL;
+  char *buf = NULL;
+  peer_node_t *cur_peer = NULL;
+  peer_node_t *tail_peer = NULL;
+
+  int len;
+  int idx;
+  
 
 
   while(1)
   {
+    controller = init_file_options_t();
     buf = mygetline(fp);
     len = mystrlen(buf);
+    /*
     if (len > FILENAMESIZ)
 			die("ACCESSCONTROL file has incorrect formatting: line is too long");
     if (len == 0)
       break;
-
+      */
     strncpy(controller->file_name, buf, len );
+
 
     buf = mygetline(fp);
     len = mystrlen(buf);
@@ -138,15 +145,19 @@ void init_access_control()
         die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
     }
 
+    /*
     if (len != 1)
         die("ACCESSCONTROL file has incorrect formatting: invalid accept or deny"); 
+     */
 
     while(1)
     {
       buf = mygetline(fp);
       len = mystrlen(buf);
+      /*
       if (len > MAXIPLEN)
         die("ACCESSCONTROL file has incorrect formatting: invalid peer ip and port");
+        */
 
       for (idx = 0; ; idx++)
       {
@@ -160,7 +171,17 @@ void init_access_control()
       strncpy(cur_peer->node_ip, buf, idx);
       cur_peer->node_port = atoi(buf + idx + 1);
 
-      if ( 
+      if (tail_peer == NULL)
+      {
+        controller->file_peers = cur_peer;
+        tail_peer = cur_peer;
+      }
+      else
+      {
+        tail_peer->node_next = cur_peer; 
+        tail_peer = cur_peer;
+      }
+
 
       if (len == 0)
         break;
@@ -168,12 +189,23 @@ void init_access_control()
         break;
     }
 
+    if (access_control == NULL)
+    {
+      access_control = controller;
+      tail_controller = controller;
+    }
+    else
+    {
+      tail_controller->file_next = controller;
+      tail_controller = controller;
+    }
+
+
     if (len == 0)
       break;
-
   }
 
-  return NULL;
+  return;
 }
 
 typedef enum tasktype {		// Which type of connection is this?
