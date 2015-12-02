@@ -656,6 +656,8 @@ static task_t *task_listen(task_t *listen_task)
 
 	t = task_new(TASK_UPLOAD);
 	t->peer_fd = fd;
+  t->portno = ntohs(peer_addr.sin_port);
+  strcpy(t->ip_address, inet_ntoa(peer_addr.sin_addr));
 	return t;
 }
 
