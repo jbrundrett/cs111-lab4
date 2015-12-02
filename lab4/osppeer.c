@@ -23,8 +23,11 @@
 #include "md5.h"
 #include "osp2p.h"
 
+
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
+
+
 
 
 /*****************************************************************************
@@ -36,6 +39,21 @@ static int listen_port;
 #define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
 #define MAXIPLEN 64 // Enough characters to store an IP address
+
+typedef struct peer_node {
+	struct in_addr addr;	// => Peer's IP address
+	int port;		// => Peer's port number
+  struct peer_node *next; //Pointer to next file_node
+} peer_node_t;
+
+typedef struct file_options {
+  char file_name[FILENAMESIZ];  
+  peer_node peer_head;
+  struct file_options* next;
+  enum {ACCEPT_ALL, DENY_ALL } file_access;
+
+} file_options_t;
+
 
 typedef enum tasktype {		// Which type of connection is this?
 	TASK_TRACKER,		// => Tracker connection
