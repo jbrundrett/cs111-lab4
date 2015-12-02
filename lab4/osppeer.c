@@ -671,14 +671,36 @@ static void task_upload(task_t *t)
 			   || (t->tail && t->buf[t->tail-1] == '\n'))
 			break;
 	}
-
+  
+  // Exercise 2: Ensure that filename length is not too long which would cause buffer overflow:
+  // FILENAMESIZ + 12 accounts for the additional characters in the formatted GET request.
+  if (strlen(t->buf) > FILENAMESIZ + 12) {
+    error("Error: GET request filename is too long\n");
+    goto exit; 
+  }
+  
 	assert(t->head == 0);
 	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
 		error("* Odd request %.*s\n", t->tail, t->buf);
 		goto exit;
 	}
 	t->head = t->tail = 0;
-
+  
+  int i;
+  // Exercise 2: Parse filename to ensure we are not exiting current directory
+  for (i = 0; i < FILENAMESIZ; i++)
+  {
+    if (t->filename[i] == '/') {
+      if (t->filename[0] == '.' && i == 1)
+        continue;
+      else
+      {
+        error("Error: GET request filename points outside of working directory\n");
+        goto exit;
+      }
+    }
+  }
+  
 	t->disk_fd = open(t->filename, O_RDONLY);
 	if (t->disk_fd == -1) {
 		error("* Cannot open file %s", t->filename);
