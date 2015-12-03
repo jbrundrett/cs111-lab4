@@ -56,4 +56,11 @@ exception of './' occuring as the first two characters of the filename. If any
 '/' characters are present, then the peer is attempting to access a subdirectory,
 which is not allowed.
 
+In addition, we set a timeout time for socket reads, so that whenever we are
+download a file, if the peer we are downloading from goes over a certain time
+limit between his messages, a counter is incremented, and after a certain
+amount of consecutive timeouts, then we switch to a different peer. This fixes
+the problem of having a peer lose a network connection or having a slow network
+connection.
+
 # Add any other information you'd like us to know below this line.

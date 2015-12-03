@@ -30,6 +30,7 @@
 #define PRINTOUT_ACCESSCONTROL 1
 
 
+
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
 
@@ -48,7 +49,8 @@ static int listen_port;
 #define DESIGN_ACTL ".access"
 #define DESIGN_ENDMARK "ENDFILE"
 
-#define DOWNLOAD_MINTIME 1
+#define DOWNLOAD_MINTIME 200000 //mintime in microseconds to wait for a 
+                            //download read before timing out
 #define DOWNLOAD_MINTIME_THRESHOLD 10
 
 
@@ -377,8 +379,10 @@ typedef enum taskbufresult {		// Status of a read or write attempt.
 	TBUF_ERROR = -1,		// => Error; close the connection.
 	TBUF_END = 0,			// => End of file, or buffer is full.
 	TBUF_OK = 1,			// => Successfully read data.
-	TBUF_AGAIN = 2			// => Did not read data this time.  The
+	TBUF_AGAIN = 2,			// => Did not read data this time.  The
 					//    caller should wait.
+  TBUF_TIMEOUT = 3
+
 } taskbufresult_t;
 
 // read_to_taskbuf(fd, t)
@@ -398,6 +402,12 @@ taskbufresult_t read_to_taskbuf(int fd, task_t *t)
 	else
 		amt = read(fd, &t->buf[tailpos], headpos - tailpos);
   
+  if (amt == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+  {
+    return TBUF_TIMEOUT;
+  }
+
+
   if (amt == -1 && (errno == EINTR || errno == EAGAIN
 			  || errno == EWOULDBLOCK))
 		return TBUF_AGAIN;
@@ -456,8 +466,13 @@ int open_socket(struct in_addr addr, int port)
 	socklen_t saddrlen;
 	int fd, ret, yes = 1;
 
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = DOWNLOAD_MINTIME;
+
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1
 	    || fcntl(fd, F_SETFD, FD_CLOEXEC) == -1
+      || setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0
 	    || setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
 		goto error;
 
@@ -765,8 +780,6 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 static void task_download(task_t *t, task_t *tracker_task)
 {
   int counter_lowspeed = 0;
-  time_t time_start;
-  time_t time_end;
 
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
@@ -822,8 +835,8 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
-    time_start = time(0);
 		int ret = read_to_taskbuf(t->peer_fd, t);
+
 
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
@@ -832,26 +845,38 @@ static void task_download(task_t *t, task_t *tracker_task)
 			/* End of file */
 			break;
 
+    //Exercise 2B
+    //added some functionality which tests if the read command times out
+    //and switches to a new peer if it times out too many times 
+    //consecutively
+    if (ret == TBUF_TIMEOUT) 
+    {
+      counter_lowspeed++;
+    }
+    else
+    {
+      counter_lowspeed = counter_lowspeed >= 0 ? 0 : counter_lowspeed - 1;
+    }
+    if (counter_lowspeed > DOWNLOAD_MINTIME_THRESHOLD)
+    {
+      if (DEBUG_DOWNLOAD)
+        message("Redoing a file due to slow connection with peer\n");
+      goto try_again;
+    }
+    ///////////////////////
+    ///////////////////////
+
 		ret = write_from_taskbuf(t->disk_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Disk write error");
 			goto try_again;
 		}
 
-    
-    time_end = time(0); 
-    if (DEBUG_DOWNLOAD)
-    {
-      message("time elapsed: %d\n", time_end - time_start);
-      message("cur counter_lowspeed: %d\n", counter_lowspeed);
-    }
-    if (time_end - time_start >= DOWNLOAD_MINTIME)
-      counter_lowspeed++;
-    else
-      counter_lowspeed = counter_lowspeed == 0 ? 0 : counter_lowspeed - 1;
 
-    if (counter_lowspeed > DOWNLOAD_MINTIME_THRESHOLD)
-      goto try_again;
+    
+    if (DEBUG_DOWNLOAD)
+      message("cur counter_lowspeed: %d\n", counter_lowspeed);
+
 
 	}
   
