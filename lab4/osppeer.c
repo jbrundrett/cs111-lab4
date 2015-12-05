@@ -25,11 +25,19 @@
 
 #include <time.h>
 
+//These are for debugging and printouts, set to 1 to activate
 #define DEBUG_ACCESSCONTROL 0
 #define DEBUG_DOWNLOAD 0
-#define PRINTOUT_ACCESSCONTROL 1
+#define PRINTOUT_ACCESSCONTROL 0
 
 
+//uncomment the below define if you want to activate the timeout feature
+//warning, it has the unintended side effect of killing the main process after
+//it finishes grabbing all active upload requests from the tracker
+//#define ACTIVATE_TIMEOUT_FEATURE
+#define DOWNLOAD_MINTIME_THRESHOLD 10
+#define DOWNLOAD_MINTIME 100000 //mintime in microseconds to wait for a 
+                            //download read before timing out
 
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
@@ -49,9 +57,7 @@ static int listen_port;
 #define DESIGN_ACTL ".access"
 #define DESIGN_ENDMARK "ENDFILE"
 
-#define DOWNLOAD_MINTIME 200000 //mintime in microseconds to wait for a 
-                            //download read before timing out
-#define DOWNLOAD_MINTIME_THRESHOLD 10
+
 
 
 typedef struct peer_node {
@@ -402,10 +408,13 @@ taskbufresult_t read_to_taskbuf(int fd, task_t *t)
 	else
 		amt = read(fd, &t->buf[tailpos], headpos - tailpos);
   
+
+#ifdef ACTIVATE_TIMEOUT_FEATURE
   if (amt == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
   {
     return TBUF_TIMEOUT;
   }
+#endif
 
 
   if (amt == -1 && (errno == EINTR || errno == EAGAIN
@@ -472,7 +481,9 @@ int open_socket(struct in_addr addr, int port)
 
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1
 	    || fcntl(fd, F_SETFD, FD_CLOEXEC) == -1
+#ifdef ACTIVATE_TIMEOUT_FEATURE
       || setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0
+#endif
 	    || setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
 		goto error;
 
@@ -849,6 +860,9 @@ static void task_download(task_t *t, task_t *tracker_task)
     //added some functionality which tests if the read command times out
     //and switches to a new peer if it times out too many times 
     //consecutively
+    
+
+#ifdef ACTIVATE_TIMEOUT_FEATURE
     if (ret == TBUF_TIMEOUT) 
     {
       counter_lowspeed++;
@@ -863,6 +877,8 @@ static void task_download(task_t *t, task_t *tracker_task)
         message("Redoing a file due to slow connection with peer\n");
       goto try_again;
     }
+#endif
+
     ///////////////////////
     ///////////////////////
 
@@ -880,7 +896,6 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 	}
   
-  message("wrote %d\n", t->total_written);
 	// Empty files are usually a symptom of some error.
 	if (t->total_written > 0) {
 		message("* Downloaded '%s' was %lu bytes long\n",
@@ -921,7 +936,9 @@ static task_t *task_listen(task_t *listen_task)
 		    (struct sockaddr *) &peer_addr, &peer_addrlen);
 	if (fd == -1 && (errno == EINTR || errno == EAGAIN
 			 || errno == EWOULDBLOCK))
+  {
 		return NULL;
+  }
 	else if (fd == -1)
 		die("accept");
 

@@ -61,6 +61,12 @@ download a file, if the peer we are downloading from goes over a certain time
 limit between his messages, a counter is incremented, and after a certain
 amount of consecutive timeouts, then we switch to a different peer. This fixes
 the problem of having a peer lose a network connection or having a slow network
-connection.
+connection. However, in doing so, we found an unintended PROPAGATION OF SIDE
+EFFECTS: in adding this option, we discovered that the main loop would
+terminate after all download requests were finished, and found that the timeout
+of the socket caused it to fail the main loop while condition. We set a
+preprocessor directive to add and remove this implementation easily, so you can
+observe it if you wish. We decided upon keeping this implementation due to the
+relevance to topics learned in class.
 
 # Add any other information you'd like us to know below this line.
